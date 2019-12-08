@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset = "utf-8">
+		<title> Final Project </title>
+		<style>
+			body { margin: 0; }
+			canvas { width: 100%; heigh: 100% }
+		</style>
+	</head>
+	<body>
+		<script src = "../three.js-master/build/three.js"></script>
+		<script src = "building.js"></script>
+                <script src ="CameraControls.js"></script>
+		<script>
+                    // Turn off default arrow key functions
+                    // to prevent window from scrolling
+                    // when user applies camera rotation
+                    window.addEventListener("keydown", function(e) {
+                    // space and arrow keys
+                    if([32, 37, 38, 39, 40].indexOf(e.keyCode) > -1) {
+                     e.preventDefault();
+                       }
+                    }, false);
+                    
+                     // Initialize Camera Movement Vars
+                    //
+                    // boolean values for whether to apply a given
+                    // transformation to the camera
+                    var moveForward = false;
+                    var moveBackward = false;
+                    var moveLeft = false;
+                    var moveRight = false;
+                    var moveUp = false;
+                    var moveDown = false;
+
+                    var rotateLeft = false;
+                    var rotateRight = false;
+                    var rotateUp = false;
+                    var rotateDown = false;
+
+                    var moveRate = 0.085;
+                    var turnRate = 0.035
+                    
+                     // Initialize Perspective Camera
+                    // (FOV, Aspect Ratio, Near Clipping Plane, 
+                    //  Far Clipping Plane)
+                    var camera = 
+                        new THREE.PerspectiveCamera(75, 
+                                                    window.innerWidth / 
+                                                    window.innerHeight,
+                                                    0.1,
+                                                    1000);
+                    //var collisions = [];
+                    function main(){
+                    //
+                    // Initialize Scene With Camera
+                    //
+                    var scene = new THREE.Scene();
+                   
+                    //camera.position.z = 5;
+                    camera.rotation.y = -Math.PI/2;
+                    
+                    // Set camera rotation order to Yaw/Pitch/Roll
+                    camera.rotation.order = 'YXZ';
+                    
+                    var renderer = new THREE.WebGLRenderer();
+                    renderer.setSize( window.innerWidth, window.innerHeight );
+                    document.body.appendChild(renderer.domElement);
+                    
+                    document.addEventListener('keydown', onKeyDown, false);
+                    document.addEventListener('keyup', onKeyUp, false);
+                    
+                    
+                    // Add lights
+                    var point = new THREE.PointLight(0xffffff, 2, 100);
+                    point.position.set(4, 4, 2);
+                    scene.add(point);
+                    point = new THREE.PointLight(0xffffff, 1, 100);
+                    point.position.set(-4, 3, 2);
+                    scene.add(point);
+                    
+                    var ambient = new THREE.AmbientLight(0x505050);
+                    scene.add(ambient);
+                    // Initialise Building Materials
+                    var windowMaterial = new THREE.MeshPhongMaterial({color: 0x1044ff});
+                    var walls = new THREE.MeshPhongMaterial({color: 0xffaa33});
+                    var material = new THREE.MeshPhongMaterial( { color: 0x00ff00 } );
+
+                    var loader = new THREE.TextureLoader();
+		    var wallMaterial = new THREE.MeshPhongMaterial({
+                                            map : loader.load('albedo.jpg'),
+                                            bumpMap : loader.load('bump.jpg'),
+                                            bumpScale : 0.005,
+                                            shininess : 10,
+                                            specularMap : loader.load('specular.jpg')});
+                    const streetMaterial = new THREE.MeshPhongMaterial({color:0x505050});
+                    var streetGeo;
+                    var streetMesh;
+                    var streetPoints;
+                    var building;
+                                            
+                    const city = new THREE.Object3D;
+                    const cityDims = [100,100];
+                    var buildingBase = [10,10];
+                    var streetDims = [100, 5];
+                    var street = getStreet(streetDims, buildingBase, streetMaterial,
+                                        wallMaterial, windowMaterial);
+                    city.add(street);
+                    streetDims = [200, 5];
+                    street = getStreet(streetDims, buildingBase, streetMaterial,
+                                        wallMaterial, windowMaterial);
+                    street.rotation.y = Math.PI/4;
+                    city.add(street);
+                    var inter_count = 0;
+                    for(var this_s = 0; this_s < city.children.length;
+                        this_s++){
+                        streetOne = city.children[this_s];
+                        s_boxOne = new THREE.Box3().setFromObject(streetOne.children[0]);
+                        scene.add(new THREE.Box3Helper(s_boxOne, 0xff0000));
+                        for(var that_s = this_s + 1; that_s < city.children.length;
+                                that_s++){
+                            streetTwo = city.children[that_s];
+                            s_boxTwo = new THREE.Box3().setFromObject(streetTwo.children[0]);
+                            s_boxTwo.applyMatrix4(streetTwo.matrixWorld);
+                            scene.add(new THREE.Box3Helper(s_boxTwo, 0x00ff00));
+                            /*for(var this_b = 1; this_b < streetOne.children.length; this_b++){
+                                for(var that_b = 1; that_b < streetTwo.children.length; that_b++){
+                                    buildingOne = streetOne.children[this_b];
+                                    buildingTwo = streetTwo.children[that_b];
+                                    b_boxOne = new THREE.Box3().setFromObject(buildingOne);
+                                    b_boxTwo = new THREE.Box3().setFromObject(buildingTwo);
+                                    // Check for intersections between buildings and other streets
+                                    if(b_boxOne.intersectsBox(s_boxTwo)){
+                                        streetOne.remove(buildingOne);
+                                    }
+                                    if(b_boxTwo.intersectsBox(s_boxOne)){
+                                        streetTwo.remove(buildingTwo);
+                                    }
+                                    //if (b_boxOne.intersectsBox(b_boxTwo)){
+                                    //    if (Math.random() < 0.5){
+                                    //        city.children[this_s].remove(buildingOne);
+                                    //    }else{
+                                    //        city.children[that_s].remove(buildingTwo);
+                                    //    }
+                                    //} // end intersection check  
+                                } // end that_b loop
+                            } // end this_b loop
+                            */
+                        } // end that_s loop
+                    } // end this_s loop
+                    
+                    scene.add(city);
+                    
+                    //building.children[0].geometry.computeBoundingBox();
+                    //var collider  = new THREE.Box3();
+                    //collider.setFromObject(building);
+                    //collisions.push(collider);
+                      
+                    function animate(){
+                        requestAnimationFrame( animate );
+                       
+                        // Apply camera transformations based on
+                        // keyboard input (including projection changes), 
+                        // check collisions and boundary
+                        // and undo transformations if neccessary
+                        // All 3 functions found in CameraControls
+                        applyCameraTransforms(camera);   
+                        //checkCameraCollision(collisions);
+                        
+                        renderer.render(scene, camera );
+                    }
+                    // animate on canvas
+                    animate();
+                    }
+                    main();
+		</script>
+	</body>
+</html>
