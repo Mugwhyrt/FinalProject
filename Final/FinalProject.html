@@ -95,58 +95,47 @@
                                             shininess : 10,
                                             specularMap : loader.load('specular.jpg')});
                     const streetMaterial = new THREE.MeshPhongMaterial({color:0x505050});
-                    var streetGeo;
-                    var streetMesh;
-                    var streetPoints;
-                    var building;
+                    //var streetGeo;
+                    //var streetMesh;
+                    //var streetPoints;
+                    //var building;
                                             
                     const city = new THREE.Object3D;
-                    const cityDims = [100,100];
+                    //const cityDims = [100,100];
                     var buildingBase = [10,10];
+                    // street dimensions, [length, width]
                     var streetDims = [100, 5];
+                    // get first street and add to city
                     var street = getStreet(streetDims, buildingBase, streetMaterial,
                                         wallMaterial, windowMaterial);
                     city.add(street);
+                    // get second street, rotate, and add to city
                     streetDims = [200, 5];
                     street = getStreet(streetDims, buildingBase, streetMaterial,
                                         wallMaterial, windowMaterial);
                     street.rotation.y = Math.PI/4;
                     city.add(street);
-                    var inter_count = 0;
+                    
+                    // For each street in city
                     for(var this_s = 0; this_s < city.children.length;
                         this_s++){
+                        // set streetOne to the current street object
                         streetOne = city.children[this_s];
+                        // get bounding box of the road on the street one
                         s_boxOne = new THREE.Box3().setFromObject(streetOne.children[0]);
-                        scene.add(new THREE.Box3Helper(s_boxOne, 0xff0000));
+                        // apply streetOne's world matrix to s_boxOne
+                        s_boxOne.applyMatrix4(streetOne.matrixWorld);
+                        scene.add(new THREE.Box3Helper(s_boxOne, 0xff00ff));
+                        // For each street after this_s, get bounding boxes and
+                        // match transformations to object's transforms
                         for(var that_s = this_s + 1; that_s < city.children.length;
                                 that_s++){
                             streetTwo = city.children[that_s];
                             s_boxTwo = new THREE.Box3().setFromObject(streetTwo.children[0]);
+                            console.log(streetTwo.matrixWorld);
                             s_boxTwo.applyMatrix4(streetTwo.matrixWorld);
                             scene.add(new THREE.Box3Helper(s_boxTwo, 0x00ff00));
-                            /*for(var this_b = 1; this_b < streetOne.children.length; this_b++){
-                                for(var that_b = 1; that_b < streetTwo.children.length; that_b++){
-                                    buildingOne = streetOne.children[this_b];
-                                    buildingTwo = streetTwo.children[that_b];
-                                    b_boxOne = new THREE.Box3().setFromObject(buildingOne);
-                                    b_boxTwo = new THREE.Box3().setFromObject(buildingTwo);
-                                    // Check for intersections between buildings and other streets
-                                    if(b_boxOne.intersectsBox(s_boxTwo)){
-                                        streetOne.remove(buildingOne);
-                                    }
-                                    if(b_boxTwo.intersectsBox(s_boxOne)){
-                                        streetTwo.remove(buildingTwo);
-                                    }
-                                    //if (b_boxOne.intersectsBox(b_boxTwo)){
-                                    //    if (Math.random() < 0.5){
-                                    //        city.children[this_s].remove(buildingOne);
-                                    //    }else{
-                                    //        city.children[that_s].remove(buildingTwo);
-                                    //    }
-                                    //} // end intersection check  
-                                } // end that_b loop
-                            } // end this_b loop
-                            */
+                            // check for intersections between buildings
                         } // end that_s loop
                     } // end this_s loop
                     
