@@ -12,7 +12,12 @@
 		<script src = "../three.js-master/build/three.js"></script>
 		<script src = "building.js"></script>
                 <script src ="CameraControls.js"></script>
+                <script src = "material.js"></script>
 		<script>
+                    /*
+                        TO DO
+                            + Migrate camera related stuff to CameraControls
+                    */
                     // Turn off default arrow key functions
                     // to prevent window from scrolling
                     // when user applies camera rotation
@@ -45,18 +50,22 @@
                      // Initialize Perspective Camera
                     // (FOV, Aspect Ratio, Near Clipping Plane, 
                     //  Far Clipping Plane)
+                    var farView = 100;
                     var camera = 
                         new THREE.PerspectiveCamera(75, 
                                                     window.innerWidth / 
                                                     window.innerHeight,
                                                     0.1,
-                                                    1000);
+                                                    farView);
                     //var collisions = [];
                     function main(){
                     //
                     // Initialize Scene With Camera
                     //
                     var scene = new THREE.Scene();
+                    scene.background = new THREE.Color(0xaaaaaa);
+                    scene.fog = new THREE.Fog(0xaaaaaa);
+                    scene.fog.far = farView / 2;
                    
                     //camera.position.z = 5;
                     camera.rotation.y = -Math.PI/2;
@@ -73,14 +82,18 @@
                     
                     
                     // Add lights
-                    var point = new THREE.PointLight(0xffffff, 2, 100);
-                    point.position.set(4, 4, 2);
-                    scene.add(point);
-                    point = new THREE.PointLight(0xffffff, 1, 100);
-                    point.position.set(-4, 3, 2);
-                    scene.add(point);
+                    const sunTarget = new THREE.Object3D;
+                    sunTarget.position.z += 1;
+                    sunTarget.position.x += 1;
+                    sunTarget.position.y -= 1;
+                    scene.add( sunTarget );
+                    const directionalLight = new THREE.DirectionalLight( 0xffffff, 
+                                                0.5 );
+                    directionalLight.target = sunTarget;
+                    scene.add( directionalLight );
                     
-                    var ambient = new THREE.AmbientLight(0x505050);
+                    
+                    var ambient = new THREE.AmbientLight(0x202020);
                     scene.add(ambient);
                     // Initialise Building Materials
                     var windowMaterial = new THREE.MeshPhongMaterial({color: 0x1044ff});
@@ -88,59 +101,49 @@
                     var material = new THREE.MeshPhongMaterial( { color: 0x00ff00 } );
 
                     var loader = new THREE.TextureLoader();
-		    var wallMaterial = new THREE.MeshPhongMaterial({
-                                            map : loader.load('albedo.jpg'),
-                                            bumpMap : loader.load('bump.jpg'),
-                                            bumpScale : 0.005,
-                                            shininess : 10,
-                                            specularMap : loader.load('specular.jpg')});
+                    wallMaterial = getMaterial();
+                    
+                    var groundMaterial = new THREE.MeshPhongMaterial({
+                                            color : 0x11cc00, shininess : 10, side: THREE.DoubleSide});
+                    
                     const streetMaterial = new THREE.MeshPhongMaterial({color:0x505050});
                                             
                     const city = new THREE.Object3D;
-                    var buildingBase = [10,10];
-                    // street dimensions, [length, width]
-                    var streetDims = [100, 5];
-                    // get first street and add to city
-                    var street = getStreet(streetDims, buildingBase, streetMaterial,
-                                        wallMaterial, windowMaterial);
-                    city.add(street);
-                    // get second street, rotate, and add to city
-                    streetDims = [200, 5];
-                    street = getStreet(streetDims, buildingBase, streetMaterial,
-                                        wallMaterial, windowMaterial);
-                    street.rotation.y = Math.PI/4;
-                    city.add(street);
                     
-                    // For each street in city
-                    for(var this_s = 0; this_s < city.children.length;
-                        this_s++){
-                        // set streetOne to the current street object
-                        streetOne = city.children[this_s];
-                        // get bounding box of the road on the street one
-                        s_boxOne = new THREE.Box3().setFromObject(streetOne.children[0]);
-                        // apply streetOne's world matrix to s_boxOne
-                        s_boxOne.applyMatrix4(streetOne.matrixWorld);
-                        scene.add(new THREE.Box3Helper(s_boxOne, 0xff00ff));
-                        // For each street after this_s, get bounding boxes and
-                        // match transformations to object's transforms
-                        for(var that_s = this_s + 1; that_s < city.children.length;
-                                that_s++){
-                            streetTwo = city.children[that_s];
-                            s_boxTwo = new THREE.Box3().setFromObject(streetTwo.children[0]);
-                            console.log(streetTwo.matrixWorld);
-                            s_boxTwo.applyMatrix4(streetTwo.matrixWorld);
-                            scene.add(new THREE.Box3Helper(s_boxTwo, 0x00ff00));
-                            // check for intersections between buildings
-                        } // end that_s loop
-                    } // end this_s loop
+                    var buildingBase = [10,10];
+                    var blockDims = [30, buildingBase[1]+1, 5];
+                    
+                    
+                    var block = getBlock(blockDims, buildingBase, streetMaterial, windowMaterial);
+                    block.position.x -= blockDims[0] / 2 + buildingBase[1] + blockDims[2]/2;
+                    block.position.z -= blockDims[1] / 2 + buildingBase[1] + blockDims[2]/2;
+                    city.add(block);
+      
+                    block = getBlock(blockDims, buildingBase, streetMaterial, windowMaterial);
+                    block.position.x += blockDims[0] / 2 + buildingBase[1] + blockDims[2]/2;
+                    block.position.z -= blockDims[1] / 2 + buildingBase[1] + blockDims[2]/2;
+                    city.add(block);
+                    
+                    block = getBlock(blockDims, buildingBase, streetMaterial, windowMaterial);
+                    block.position.x -= blockDims[0] / 2 + buildingBase[1] + blockDims[2]/2;
+                    block.position.z += blockDims[1] / 2 + buildingBase[1] + blockDims[2]/2;
+                    city.add(block);
+                    
+                    block = getBlock(blockDims, buildingBase, streetMaterial, windowMaterial);
+                    block.position.x += blockDims[0] / 2 + buildingBase[1] + blockDims[2]/2;
+                    block.position.z += blockDims[1] / 2 + buildingBase[1] + blockDims[2]/2;
+                    city.add(block);
+                    
+                    var groundGeo = new THREE.PlaneBufferGeometry(blockDims[0] * 10, 
+                                        blockDims[1] * 10);
+                    var ground = new THREE.Mesh(groundGeo, groundMaterial);
+                    ground.position.z += blockDims[1] ;
+                    ground.rotation.x = Math.PI/2;
+                    ground.position.y -= 1;
+                    city.add(ground);
                     
                     scene.add(city);
                     
-                    //building.children[0].geometry.computeBoundingBox();
-                    //var collider  = new THREE.Box3();
-                    //collider.setFromObject(building);
-                    //collisions.push(collider);
-                      
                     function animate(){
                         requestAnimationFrame( animate );
                        
@@ -150,7 +153,6 @@
                         // and undo transformations if neccessary
                         // All 3 functions found in CameraControls
                         applyCameraTransforms(camera);   
-                        //checkCameraCollision(collisions);
                         
                         renderer.render(scene, camera );
                     }

@@ -1,17 +1,13 @@
-/*
-TO DO
-Adjust how building dim ranges are determined
-    basing them on how much space is left in the block
-    weighting towards some average size
+/* TO DO
+    + comment file
+    + see to dos for each function
+    + Add bounding box for city to prevent camera from moving out of bounds
 */
-
 
 function getWindows(cube, floor_dims, windowMaterial){
     var windows = new THREE.Object3D();
-    //var max_windowDensity = 10;
-    //var windowDensity = Math.ceil(Math.random() * max_windowDensity);
     
-    windowWidths = [1, 2, 4];
+    windowWidths = [1, 2];
     var windowWidth_x, windowWidth_z;
     var index;
     do{
@@ -45,7 +41,7 @@ function getWindows(cube, floor_dims, windowMaterial){
                 thatLength = floor_dims.x;
                 windowWidth = windowWidth_z;
             }
-            //windowCount = thisLength / windowWidth;
+
             windowStep = windowWidth * (4.0/3.0);
             windowCount = thisLength / windowStep;
             cube.scale.set(windowWidth, 
@@ -75,14 +71,12 @@ function getWindows(cube, floor_dims, windowMaterial){
 }
 
 function getBuilding(maxDims, wallMaterial, windowMaterial){
-     //
-    // Add a building
-    //
+
     const building = new THREE.Object3D();
     const geometry = new THREE.BoxBufferGeometry(1, 1, 1);
  
     var cube = new THREE.Mesh(geometry, wallMaterial);
-    var max_floorCount = 4;
+    var max_floorCount = 10;
     var floorCount = Math.random() * max_floorCount;
 
     // Windows can end up running off the edge of the length of a wall
@@ -104,57 +98,149 @@ function getBuilding(maxDims, wallMaterial, windowMaterial){
     return building;
 }
 
-function getStreet(streetDims, buildingBase, 
-                    streetMaterial, wallMaterial, windowMaterial){
-    const street= new THREE.Object3D;
-    streetGeo = new THREE.BoxBufferGeometry(streetDims[0], 0.15,
+function placeBuilding(index, sign, buildingBase, streetDims, wallMaterial, windowMaterial){
+    building = getBuilding(buildingBase, wallMaterial, 
+                                windowMaterial);
+    buildingDepth = building.children[0].scale.z;
+    buildingWidth = building.children[0].scale.x;
+    building.position.x = index - streetDims[0]/2 + buildingWidth/2;
+    building.position.z = sign * (streetDims[1]/2 + buildingDepth/2);
+    return building;
+}
+
+function getRoad(streetDims, streetMaterial){
+    const geometry = new THREE.BoxBufferGeometry(streetDims[0], 0.15,
                                                 streetDims[1]);
-    streetMesh = new THREE.Mesh(streetGeo, streetMaterial);
-    streetMesh.name = "street";
-    streetMesh.position.y -= 1;
-    street.add(streetMesh);
-    streetPoints = [[-streetDims[0]/2, 0],
-                    [streetDims[0]/2, 0]];
+    const road  = new THREE.Mesh(geometry, streetMaterial);
+    road.name = "road";
+    road.position.y -= 1;
+    return road;
+}
+
+// TO DO:
+//  Implement placeRow to simplify code, implement such that it can
+//          take any mesh generation function like for windows
+//
+function getStreet(streetDims, buildingBase, streetMaterial, windowMaterial,
+                    left = true, right = true){
+    var wallMaterial;
+
+    const street= new THREE.Object3D;
+    street.name = "street";
+    street.add(getRoad(streetDims, streetMaterial));
+
+    var building;
+    var row = new THREE.Object3D;;
     var b = 0;
-    while(b < streetDims[0]){
-        building = getBuilding(buildingBase, wallMaterial, 
-                                windowMaterial);
-        buildingDepth = building.children[0].scale.z;
-        buildingWidth = building.children[0].scale.x;
-        building.position.x = b - streetDims[0]/2 + buildingWidth/2;
-        building.position.z = - (streetDims[1]/2 
-                                + buildingDepth/2);
-        //building.position.y -= 0.5;
-        street.add(building.clone());
-        b += buildingWidth + 0.5;
+    if (left){
+        while(b + buildingBase[0] < streetDims[0]){
+            wallMaterial = getMaterial(buildingBase);
+            building = placeBuilding(b, -1, buildingBase, streetDims, 
+                            wallMaterial, windowMaterial);
+            row.add(building.clone());
+            b += building.children[0].scale.x + Math.random() * 2;
+        }
+        row.position.x += (streetDims[0] - b) / 2;
+        street.add(row.clone());
     }
-    b = 0;
-    while(b < streetDims[0]){
-        building = getBuilding(buildingBase, wallMaterial, 
-                                windowMaterial);
-        buildingDepth = building.children[0].scale.z;
-        buildingWidth = building.children[0].scale.x;
-        building.position.x = b - streetDims[0]/2 + buildingWidth/2;
-        building.position.z = + (streetDims[1]/2 
-                        + buildingDepth/2);
-        //building.position.y -= 0.5;
-        street.add(building.clone());
-        b += buildingWidth + 0.5;
+    if (right){  
+        row = new THREE.Object3D;;
+        b = 0;
+        while(b + buildingBase[0] < streetDims[0]){
+            wallMaterial = getMaterial(buildingBase);
+            building = placeBuilding(b, 1, buildingBase, streetDims, 
+                            wallMaterial, windowMaterial);
+            row.add(building.clone());
+            b += building.children[0].scale.x + 0.5;
+        }
+        row.position.x += (streetDims[0] - b) / 2;
+        street.add(row);
     }
     return street;
 }
 
-function getBlock(blockDims, wallMaterial, windowMaterial){
-    var block = new THREE.Object3D();
-    var dimsUsed = 0;
-    for (var i = 0; i < blockDims[0]; i++){
-        building = getBuilding([blockDims[0]-dimsUsed, blockDims[1]],wallMaterial, windowMaterial);
-        building.position.x -= (blockDims[0]/2 - i) 
-                             - ( building.children[0].scale.x/2 + 0.5);
-        building.position.z -= (building.children[0].scale.z/2);
-        block.add(building.clone());
-        dimsUsed -= building.scale.x;
-        i += building.children[0].scale.x;
-        }
+// TO DO:
+//  implement placeStreet and placeCorner to simplify code
+//
+function getBlock( blockDims, buildingBase, streetMaterial, windowMaterial,
+                    outsides = [false, false, false, false] ){
+    const block = new THREE.Object3D;
+    // street dimensions, [length, width]
+    var streetDimsLong = [blockDims[0], blockDims[2]];
+    var streetDimsShort = [blockDims[1], blockDims[2]];
+    // get first street and add to city
+    var street = getStreet(streetDimsLong, buildingBase, streetMaterial,
+                        windowMaterial, true, outsides[0]);
+    
+    street.position.z += streetDimsShort[0]/2 + blockDims[2] / 2 + buildingBase[1];                
+    block.add(street);
+ 
+    var street = getStreet(streetDimsLong, buildingBase, streetMaterial,
+                    windowMaterial, outsides[1], true);
+    street.position.z -= streetDimsShort[0]/2 + blockDims[2] / 2 + buildingBase[1];
+    block.add(street);
+    
+    street = getStreet(streetDimsShort, buildingBase, streetMaterial,
+                windowMaterial, outsides[2], true);
+    street.rotation.y = Math.PI/2;
+    
+    street.position.x -= (streetDimsLong[0] / 2 + buildingBase[1] + blockDims[2] / 2);
+    
+    block.add(street);
+                    
+    street = getStreet(streetDimsShort, buildingBase, streetMaterial,
+                windowMaterial, true, outsides[3]);
+    street.rotation.y = Math.PI/2;
+    street.position.x += (streetDimsLong[0] / 2 + buildingBase[0] + blockDims[2] / 2);
+                   
+    block.add(street);              
+    block.position.z += streetDimsShort[0] + buildingBase[1]/2;
+
+    
+    var corner;
+    
+    corner = getCorner(blockDims, buildingBase, streetMaterial, windowMaterial);
+    corner.position.x += blockDims[0] / 2 + buildingBase[1] + blockDims[2] / 2;
+    corner.position.z += blockDims[1] / 2 + buildingBase[1] + blockDims[2] / 2;
+    block.add(corner);
+    
+    corner = getCorner(blockDims, buildingBase, streetMaterial, windowMaterial);
+    corner.position.x -= blockDims[0] / 2 + buildingBase[1] + blockDims[2] / 2;
+    corner.position.z += blockDims[1] / 2 + buildingBase[1] + blockDims[2] / 2;
+    corner.rotation.y -= Math.PI/2;
+    block.add(corner);
+    
+    corner = getCorner(blockDims, buildingBase, streetMaterial, windowMaterial);
+    corner.position.x -= blockDims[0] / 2 + buildingBase[1] + blockDims[2] / 2;
+    corner.position.z -= blockDims[1] / 2 + buildingBase[1] + blockDims[2] / 2;
+    corner.rotation.y -= Math.PI;
+    block.add(corner);
+    
+    corner = getCorner(blockDims, buildingBase, streetMaterial, windowMaterial);
+    corner.position.x += blockDims[0] / 2 + buildingBase[1] + blockDims[2] / 2;
+    corner.position.z -= blockDims[1] / 2 + buildingBase[1] + blockDims[2] / 2;
+    corner.rotation.y += Math.PI/2;
+    block.add(corner);
+    
     return block;
+}
+
+function getCorner(blockDims, buildingBase, streetMaterial, windowMaterial){
+    var building;
+    const roadDims = [(blockDims[2] + buildingBase[1]), blockDims[2]];
+    var road = getRoad(roadDims, streetMaterial);
+    const corner = new THREE.Object3D;
+    
+    road.position.x -= roadDims[0]/2 - blockDims[2]/2;
+    corner.add(road.clone());
+    road = getRoad(roadDims, streetMaterial);
+    road.position.z -= roadDims[0]/2 - blockDims[2]/2;
+    road.rotation.y = Math.PI/2;
+    corner.add(road.clone());
+    
+    building = getBuilding(buildingBase, wallMaterial, windowMaterial);
+    building.position.x -= blockDims[2]/2 + buildingBase[0] / 2;
+    building.position.z -= blockDims[2]/2 + buildingBase[0] / 2;
+    corner.add(building);
+    return corner; 
 }

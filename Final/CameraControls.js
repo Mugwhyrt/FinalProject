@@ -195,33 +195,6 @@ function undoCameraTranslation(){
     }
 }
 
-// checkCameraCollision
-// iterates through an array of meshes with precomputed
-// boundingBoxes to check for collision with camera, assumes all
-// boundingBoxes share the same world rotation
-// calls undoCameraTranslation() if it collides with a mesh
-function checkCameraCollision(collisionBoxes){
-    for ( var c in collisionBoxes ){
-        var box = 
-            collisionBoxes[c].geometry.boundingBox.clone();
-        var boxPos =
-            collisionBoxes[c].position.clone();
-        var camBox = 
-            camera.position.clone();
-        camSize = 0.5;
-        if ( box.min.x + boxPos.x < (camBox.x + camSize)
-            && box.max.x + boxPos.x > (camBox.x - camSize)
-            && box.min.y + boxPos.y < (camBox.y + camSize)
-            && box.max.y + boxPos.y > (camBox.y - camSize)
-            && box.min.z + boxPos.z < (camBox.z + camSize)
-            && box.max.z + boxPos.z > (camBox.z - camSize) )
-        {
-            undoCameraTranslation();
-            return;
-        }
-    }
-}
-
 // checkCameraBoundary
 // checks if camera is out of bounds
 // calls undoCameraTranslation() if it is
