@@ -14,10 +14,6 @@
                 <script src ="CameraControls.js"></script>
                 <script src = "material.js"></script>
 		<script>
-                    /*
-                        TO DO
-                            + Migrate camera related stuff to CameraControls
-                    */
                     // Turn off default arrow key functions
                     // to prevent window from scrolling
                     // when user applies camera rotation
@@ -28,46 +24,25 @@
                        }
                     }, false);
                     
-                     // Initialize Camera Movement Vars
-                    //
-                    // boolean values for whether to apply a given
-                    // transformation to the camera
-                    var moveForward = false;
-                    var moveBackward = false;
-                    var moveLeft = false;
-                    var moveRight = false;
-                    var moveUp = false;
-                    var moveDown = false;
-
-                    var rotateLeft = false;
-                    var rotateRight = false;
-                    var rotateUp = false;
-                    var rotateDown = false;
-
-                    var moveRate = 0.085;
-                    var turnRate = 0.035
-                    
                      // Initialize Perspective Camera
                     // (FOV, Aspect Ratio, Near Clipping Plane, 
                     //  Far Clipping Plane)
-                    var farView = 100;
+                    var farView = 1000;
                     var camera = 
                         new THREE.PerspectiveCamera(75, 
                                                     window.innerWidth / 
                                                     window.innerHeight,
                                                     0.1,
                                                     farView);
-                    //var collisions = [];
                     function main(){
                     //
                     // Initialize Scene With Camera
                     //
                     var scene = new THREE.Scene();
-                    scene.background = new THREE.Color(0xaaaaaa);
-                    scene.fog = new THREE.Fog(0xaaaaaa);
-                    scene.fog.far = farView / 2;
+                    scene.background = new THREE.Color(0x2222ff);
+                    //scene.fog = new THREE.Fog(0xaaaaaa);
+                    //scene.fog.far = farView / 2;
                    
-                    //camera.position.z = 5;
                     camera.rotation.y = -Math.PI/2;
                     
                     // Set camera rotation order to Yaw/Pitch/Roll
@@ -75,6 +50,9 @@
                     
                     var renderer = new THREE.WebGLRenderer();
                     renderer.setSize( window.innerWidth, window.innerHeight );
+                    renderer.shadowMap.enabled = true;
+                    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                    
                     document.body.appendChild(renderer.domElement);
                     
                     document.addEventListener('keydown', onKeyDown, false);
@@ -83,19 +61,50 @@
                     
                     // Add lights
                     const sunTarget = new THREE.Object3D;
-                    sunTarget.position.z += 1;
-                    sunTarget.position.x += 1;
-                    sunTarget.position.y -= 1;
+                    sunTarget.position.set(100, -100, 100);
                     scene.add( sunTarget );
-                    const directionalLight = new THREE.DirectionalLight( 0xffffff, 
+                    const sun = new THREE.DirectionalLight( 0xffffff, 
                                                 0.5 );
-                    directionalLight.target = sunTarget;
-                    scene.add( directionalLight );
+                    sun.position.set(-100, 100, -100);
+                    sun.target = sunTarget;
+                    sun.castShadow = true;
                     
+                    sun.shadow.bias = -0.004;
+                    var shadowResolution = 4096;
+                    sun.shadow.mapSize.width = shadowResolution;
+                    sun.shadow.mapSize.height = shadowResolution;
+                    scene.add( sun );
                     
-                    var ambient = new THREE.AmbientLight(0x202020);
+                    var halfWidth = 250
+                    const cam = sun.shadow.camera;
+                    cam.near = 1;
+                    cam.far = 500;
+                    cam.left = -halfWidth;
+                    cam.right = halfWidth;
+                    cam.top = halfWidth;
+                    cam.bottom = -halfWidth;
+                    
+                    var ambient = new THREE.AmbientLight(0x202020, 0.5);
                     scene.add(ambient);
+                    
+                    // Add Sun Mesh
+                    var sunGeo = new THREE.SphereBufferGeometry( 5, 12, 10 );
+                    var sunMaterial = new THREE.MeshBasicMaterial( 
+                                            {color: 0xffff00} );
+                    var sunMesh = new THREE.Mesh( sunGeo, sunMaterial );
+                    sunMesh.position.set(-100, 100, -100);
+                    scene.add(sunMesh);
+                    
+                    /* Make a city:
+                        the following code builds out a city from three blocks.
+                        Blocks are arranged in a rough L-shape with one block 
+                        of slightly smaller dimensions than the other. Buildings
+                        can generate on the outsides of the city
+                    
+                    */
+                    //
                     // Initialise Building Materials
+                    //
                     var windowMaterial = new THREE.MeshPhongMaterial({color: 0x1044ff});
                     var walls = new THREE.MeshPhongMaterial({color: 0xffaa33});
                     var material = new THREE.MeshPhongMaterial( { color: 0x00ff00 } );
@@ -104,45 +113,88 @@
                     wallMaterial = getMaterial();
                     
                     var groundMaterial = new THREE.MeshPhongMaterial({
-                                            color : 0x11cc00, shininess : 10, side: THREE.DoubleSide});
+                                            color : 0x11cc00, shininess : 10, 
+                                            side: THREE.DoubleSide});
                     
                     const streetMaterial = new THREE.MeshPhongMaterial({color:0x505050});
-                                            
+                    
+                    
+                    //
+                    // Create and place city objects
+                    //
+                    
+                    // declare a parent mesh for generated blocks
                     const city = new THREE.Object3D;
                     
-                    var buildingBase = [10,10];
-                    var blockDims = [30, buildingBase[1]+1, 5];
+                    // declare and initialise arrays for tracking the
+                    // dimensions of the ground, building bases (max dimensions),
+                    // block dimensions, and a boolean-tracker for when and 
+                    // where to generate buildings on the outside of some block
+                    var groundDims = [0, 0];
+                    var buildingBase = [10,10,10];
+                    var blockDims = [30, 20, 5];
+                    var outsides = [true, true, true, false];
                     
-                    
-                    var block = getBlock(blockDims, buildingBase, streetMaterial, windowMaterial);
-                    block.position.x -= blockDims[0] / 2 + buildingBase[1] + blockDims[2]/2;
-                    block.position.z -= blockDims[1] / 2 + buildingBase[1] + blockDims[2]/2;
+                    // Declare and initialise a block
+                    var block = getBlock(blockDims, buildingBase, 
+                                    streetMaterial, windowMaterial, outsides);
+                    // Offset block from center according to its dimensions
+                    block.position.x -= blockDims[0] / 2 + buildingBase[1] 
+                                            + blockDims[2]/2;
+                    block.position.z -= blockDims[1] / 2 + buildingBase[1] 
+                                            + blockDims[2]/2;
                     city.add(block);
+                    // increment ground dimensions by those of the newly
+                    // added block
+                    groundDims[0] += blockDims[0];
+                    groundDims[1] += blockDims[1];
       
-                    block = getBlock(blockDims, buildingBase, streetMaterial, windowMaterial);
-                    block.position.x += blockDims[0] / 2 + buildingBase[1] + blockDims[2]/2;
-                    block.position.z -= blockDims[1] / 2 + buildingBase[1] + blockDims[2]/2;
+                    outsides = [false, true, false, true];
+                    block = getBlock(blockDims, buildingBase, streetMaterial, 
+                                    windowMaterial, outsides);
+                    block.position.x += blockDims[0] / 2 + buildingBase[1] 
+                                            + blockDims[2]/2;
+                    block.position.z -= blockDims[1] / 2 + buildingBase[1] 
+                                            + blockDims[2]/2;
                     city.add(block);
+                    groundDims[0] += blockDims[0];
+                    groundDims[1] += blockDims[1];
                     
-                    block = getBlock(blockDims, buildingBase, streetMaterial, windowMaterial);
-                    block.position.x -= blockDims[0] / 2 + buildingBase[1] + blockDims[2]/2;
+                    // adjust block size to something smaller
+                    blockDims = [11, 20, 5];
+                    outsides = [true, false, true, true];
+                    block = getBlock(blockDims, buildingBase, streetMaterial, 
+                                    windowMaterial, outsides);
+                    block.position.x += blockDims[0] / 2 + buildingBase[1] + blockDims[2]/2;
                     block.position.z += blockDims[1] / 2 + buildingBase[1] + blockDims[2]/2;
                     city.add(block);
+                    groundDims[0] += blockDims[0];
+                    groundDims[1] += blockDims[1];
                     
-                    block = getBlock(blockDims, buildingBase, streetMaterial, windowMaterial);
-                    block.position.x += blockDims[0] / 2 + buildingBase[1] + blockDims[2]/2;
-                    block.position.z += blockDims[1] / 2 + buildingBase[1] + blockDims[2]/2;
-                    city.add(block);
-                    
-                    var groundGeo = new THREE.PlaneBufferGeometry(blockDims[0] * 10, 
-                                        blockDims[1] * 10);
+                    // Get ground from groundDims, multiply by 5 to ensure that
+                    // the ground is a good size larger than the city
+                    var groundGeo = new THREE.PlaneBufferGeometry(groundDims[0] * 5, 
+                                        groundDims[1] * 5);
                     var ground = new THREE.Mesh(groundGeo, groundMaterial);
-                    ground.position.z += blockDims[1] ;
+                    ground.receiveShadow = true;
+                    //ground.position.z += blockDims[1] ;
                     ground.rotation.x = Math.PI/2;
                     ground.position.y -= 1;
                     city.add(ground);
-                    
                     scene.add(city);
+                    
+                    // Traverse children of the city and set boolean values
+                    // for shadow maps. Only floors of buildings actually
+                    // get set to cast shadows to minimize overhead
+                    city.traverse((obj) => {
+                        if (obj.castShadow !== undefined) {
+                            if (obj.name == "floor"){
+                                console.log("building found!");
+                                obj.castShadow = true;
+                            }
+                        obj.receiveShadow = true;
+                        }
+                    });
                     
                     function animate(){
                         requestAnimationFrame( animate );
@@ -153,7 +205,6 @@
                         // and undo transformations if neccessary
                         // All 3 functions found in CameraControls
                         applyCameraTransforms(camera);   
-                        
                         renderer.render(scene, camera );
                     }
                     // animate on canvas

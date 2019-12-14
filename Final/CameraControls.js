@@ -1,15 +1,37 @@
-/**
-Camera Controls - Assignment 4
-===============
-Functions for standard first person camera controls
-COS 452, Fall 2019
-Zachary Rohman
-**/
+/*
+    ======================
+    Camera Controls
+    COS 452, Fall 2019
+    Assignment 4
+    Author: Zachary Rohman
+    ======================
+    Functions for standard first person camera controls utilising W/A/S/D for
+    translation of camera and UP/DOWN/LEFT/RIGHT arrows for rotation. Assumes
+    that camera rotation order is based on Yaw/Pitch/Roll. 
+*/
 
 // flag for current camera perspective( 0 for perspective, 1 for ortho);
 var cameraPerspective = 0;
 var orthoDenominator = 750;
 
+// Initialize Camera Movement Vars
+//
+// boolean values for whether to apply a given
+// transformation to the camera
+var moveForward = false;
+var moveBackward = false;
+var moveLeft = false;
+var moveRight = false;
+var moveUp = false;
+var moveDown = false;
+
+var rotateLeft = false;
+var rotateRight = false;
+var rotateUp = false;
+var rotateDown = false;
+
+var moveRate = 0.085;
+var turnRate = 0.035
 
 var onKeyDown = function ( event ){
     switch (event.keyCode){
