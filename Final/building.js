@@ -259,7 +259,7 @@ function getStreet(streetDims, buildingBase, streetMaterial, windowMaterial,
             building = placeBuilding(b, 1, buildingBase, streetDims, 
                             wallMaterial, windowMaterial);
             row.add(building.clone());
-            b += building.children[0].scale.x + 0.5;
+            b += building.children[0].scale.x + Math.random() * 2;
         }
         lengthLeft = Math.floor(streetDims[0] - b);
         if (lengthLeft > 1){
