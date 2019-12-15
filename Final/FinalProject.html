@@ -105,7 +105,8 @@
                     //
                     // Initialise Building Materials
                     //
-                    var windowMaterial = new THREE.MeshPhongMaterial({color: 0x1044ff});
+                    var windowMaterial = new THREE.MeshPhongMaterial({color: 0x1044ff,
+                                                                    side : THREE.DoubleSide});
                     var walls = new THREE.MeshPhongMaterial({color: 0xffaa33});
                     var material = new THREE.MeshPhongMaterial( { color: 0x00ff00 } );
 
@@ -130,9 +131,24 @@
                     // dimensions of the ground, building bases (max dimensions),
                     // block dimensions, and a boolean-tracker for when and 
                     // where to generate buildings on the outside of some block
+                    //
+                    // groundDims is initialised to zero and incremented
+                    //  by dimensions of any new block to get rough measurement
                     var groundDims = [0, 0];
-                    var buildingBase = [10,10,10];
+                    // The maximum dimensions for a building [width, height,
+                    //  floor count]
+                    var buildingBase = [10,10,7];
+                    // The dimensions for a block's two street lengths and 
+                    // the width of a street
                     var blockDims = [30, 20, 5];
+                    
+                    // Boolean values to track which side of a street to
+                    // generate buildings on. This allows us to
+                    // generate collections of adjacent blocks without
+                    // worrying about overlapping buildings (as in, the
+                    // outer buildings of Block A would overlap the inner 
+                    // buildings of Block B if they were immediately adjacent 
+                    // and shared a roadway)
                     var outsides = [true, true, true, false];
                     
                     // Declare and initialise a block
@@ -183,18 +199,19 @@
                     city.add(ground);
                     scene.add(city);
                     
+                    
                     // Traverse children of the city and set boolean values
                     // for shadow maps. Only floors of buildings actually
                     // get set to cast shadows to minimize overhead
                     city.traverse((obj) => {
                         if (obj.castShadow !== undefined) {
                             if (obj.name == "floor"){
-                                console.log("building found!");
                                 obj.castShadow = true;
                             }
                         obj.receiveShadow = true;
                         }
                     });
+                    
                     
                     function animate(){
                         requestAnimationFrame( animate );

@@ -27,6 +27,7 @@
 
 */
 
+
 /* placeWindows: creates and applies windows to sides of a building. There
     is no associated getWindows() function.
     Window count and placement is determined from the dimensions
@@ -80,7 +81,7 @@ function placeWindows(cube, floor_dims, windowMaterial){
         if (i % 2 == 0){
             thisLength = floor_dims.x;
             thatLength = floor_dims.z;
-            windowWidth = windowWidth_x; 
+            windowWidth = windowWidth_x;
         }else{
             thisLength = floor_dims.z;
             thatLength = floor_dims.x;
@@ -143,8 +144,9 @@ function getBuilding(maxDims, wallMaterial, windowMaterial){
         // Place floor of height, width, length  
         cube = new THREE.Mesh(geometry, wallMaterial);
         cube.scale.set(floor_dims.x, floor_dims.y, floor_dims.z);
-        cube.position.y = f * floor_dims.y;
+        cube.position.y = f * floor_dims.y;        
         cube.name = "floor";
+
         building.add(cube.clone());
         building.add(placeWindows(cube, floor_dims, windowMaterial));   
         }

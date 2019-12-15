@@ -34,6 +34,8 @@ var fileList = ["BRICK_00","BRICK_01", "BRICK_02", "BRICK_02a",
     "BRICK_02b", "BRICK_02c", "BRICK_03", "CONCRETE_00", "CONCRETE_01",
     "CONCRETE_01a", "CONCRETE_02", "CONCRETE_02a", "CONCRETE_02b", 
     "CONCRETE_02c", "WOOD_00", "WOOD_00a", "WOOD_00b", "WOOD_00c"];
+// alphaCheck checks for two digits followed by a character between a-z at the 
+//  end of the string
 const alphaCheck = new RegExp('[\d\da-z]$');
 
 /*  
@@ -64,15 +66,13 @@ const loader = new THREE.TextureLoader();
         fileList
 */
 function getMaterial(){
-    // get random index value from within the range of possible
-    // values for fileList
-    const index = Math.floor(Math.random() * fileList.length);
     // assign corresponding fileList value to texID
+    index = Math.floor(Math.random() * fileList.length);
     const texID = fileList[index];
     // if texID is not in loadedTexs then create the material
     // and load it into loaded texs
     if (!(texID in loadedTexs)){
-        loadedTexs[texID] = loadMaterial(texID);
+       loadedTexs[texID] = loadMaterial(texID);
     }
     return loadedTexs[texID];
 }
